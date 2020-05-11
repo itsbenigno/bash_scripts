@@ -12,6 +12,8 @@ eregex="" # pattern given to -e
 
 lstind=0 # the index of the first given argument 
 
+number=0 # to distinguish duplicates file
+
 ######################################
 # 1) Taking options and arguments
 
@@ -216,13 +218,29 @@ rename(){
 	fi
 	local extension=`echo ${name##*.}`
 
-	if [[ $extension == $1 ]]
+	if [[ $extension == $1 ]] #file has no extension
 	then 
-		mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`"
+		if [[ -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`" ]] #file already exist
+		then
+			mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`${number}"
+			((number=number+1))
+		elif [[ ! -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`" ]]
+			then 
+			mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`"
+		fi
 
 	elif [[ $extension != $1 ]]
 		then 
-		mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}"
+		if [[ -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}" ]]
+		then
+			mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`${number}.${name##*.}"
+			((number=number+1))
+
+		elif [[ ! -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}" ]]
+		then
+			mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}"
+		fi
+
 	fi
 
 }
