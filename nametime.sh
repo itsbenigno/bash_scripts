@@ -1,211 +1,273 @@
 #!/bin/bash
 
+# [e,r,t,f]given=0 -> the option was not given
+egiven=0  
+rgiven=0 
+tgiven=0 
+fgiven=0
+xmode=0
+smode=1 #safe mode (default)
 
-epresente=0 # 0 -> l'opzione e non è presente
-rpresente=0 # 0 -> l'opzione r non è presente
-tpresente=0 
+eregex="" # pattern given to -e 
 
-eregex="" #argomento di -e 
-
-lstind=0 #indice dell'inizio degli argomenti
+lstind=0 # the index of the first given argument 
 
 ######################################
+# 1) Taking options and arguments
 
+# display script's synopsis #
+usage () {
+	echo -e "nametime [options] [file,dir] \n 
+		This script rename files with their creation timestamp \n
+		-e 'pattern' -> search only the files that have a match with 'pattern' \n 
+		-r -> search recursively into directories \n 
+		-t -> creates a file (oldnames.txt) with the old name \n
+		-f -> format all the file in standard unix but does not rename with the timestamp \n
+		-o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the \n
+		user the permission to change the permission, with the option 'x' it just change the permission \n
+		-h -> help menu \n " 
+	exit 1
+}
 
-# 1) prendo le opzioni e i loro argomenti
+OPTERR=0 # getops is silenced
+while getopts ":e:rthfo:" opt; do 
 
-OPTERR=0 #non mostra errori di getops
-while getopts ":e:rth" opt; do # serve il : all'inizio per far funzionare : (entra in modalità non verb.)
-
-	lstind=${OPTIND} #viene aumentato da getops scorrendo le opzioni
+	lstind=${OPTIND} 
 
 	case ${opt} in
 
     e)
-		eregex=${OPTARG} #salvo la regex
-		epresente=1 
+		eregex=${OPTARG} 
+		egiven=1 
       ;;
 
     r)
-		rpresente=1 
+		rgiven=1 
 	  ;;
 
-	 t) 
-		tpresente=1
+	f) 
+		fgiven=1
 		;;
+
+	t) 
+		tgiven=1
+		;;
+
+	o) 
+		if [[ ${OPTARG} == "x" ]]
+			then xmode=1
+				smode=0
+
+		elif [[ ${OPTARG} != "s" || ${OPTARG} != "x" ]]
+			then 
+				echo "You can pass s or x to -o"
+				usage
+		fi
+		;;
+
 	h)
-		echo "nametime.sh [-e rgx] -[rt] argtorename" 
+		usage  
 		;;
-	:) # non ho passato l'argomento ad e
-      	echo "Devi passare il pattern che vuoi cercare"
-     	 exit 1
+
+	:) 
+      	echo "You must give and argument to ${opt}"
+     	usage
       ;;
 
     \?) #opzione sbagliata
-      	echo "hai dato un'opzione che non esiste" 
-      	exit 2
+      	echo "${opt} does not exist" 
+      	usage
       ;;
 
   esac
 done
 
-# 1) fine 
+# 1) end
 
+##########################################
+# 2) check if at least one argument was passed
 
-# 2) non è stato passato almeno un argomento
-
-if (( ${lstind} == 0)) && (( $# <1 )) #non hai dato un argomento (nel caso senza opzioni)
+if (( ${lstind} == 0)) && (( $# <1 )) 
 	then 
-		echo "Devi passare almeno un argomento da rinominare"
-	  	exit 3
+		echo "You must give at least a directory or file path"
+	  	usage
 	fi
 
-if  (( $# - ${lstind} +1 < 1 )) #non hai dato nemmeno un argomento (nel caso in cui abbia dato opzioni)
+if  (( $# - ${lstind} +1 < 1 )) 
 	then
-	  	echo "Devi passare almeno un argomento da rinominare"
-	  	exit 3
+	  	echo "You must give at least a directory or file path"
+	  	usage 
 	fi	
 
-# 2) fine 
+# 2) end 
 
 
-# 3) inserimento argomenti in un array e controllo sui file in input
+# 3) storing and checking argument
 	
-if [[ ${lstind} -eq 0 ]] #se non lo facessi mostrerebbe il nome del file,
-then lstind=1			 #nel caso in cui non ci siano opzioni
+if [[ ${lstind} -eq 0 ]] #if no option was given
+then lstind=1			 
 fi
 
-if [[ tpresente -eq 1 ]]
-	then touch oldnames.txt
+#save tbe old name in a file before renaming
+if [[ tgiven -eq 1 ]] 
+	then 
+		touch oldnames.txt
 		echo oldname newname >>oldnames.txt
 	fi
 
-#### controlla i permessi della directory #######
-#### in: nomecartella out: checked, perms #######
+#### checks directory permission #######
+#### in: dirname #######
 checkdir(){
+	checked=1
+	local dirname="${1}" 
 
-	checked=0 # valore di ritorno 
-	local dirname="${1}" # nome cartella
-
-	if [[ -w "$dirname" ]] && [[ -r "$dirname" ]] && [[ -x "$dirname" ]] #rwx 
-		then checked=1
+	if [[ ! -w "$dirname" ]] || [[ ! -x "$dirname" ]] 
+		then
+			if [[ $smode -eq 1 ]] #safe mode
+			then 
+			echo "The directory ${1} has not the right permession, you want to change that or exit? "
+			read in
+			if [[ "$in" == "yes" || "$in" == "y" ]]
+				then chmod u+wx "$dirname" 
+			elif [[ "$in" == "no" || "$in" == * ]] #in the final version it just ignore the file
+				then checked=0
+			fi
+			elif [[ $xmode -eq 1 ]]
+			then  chmod u+wx "$dirname"
+			fi
 	fi
 
 }
+
 ##################################################
+format(){
 
-ignorati=0 #numro da restituire in exit
-declare -a argtosearch #array degli argomenti validi
+	local arg=$1
+    local namearg="`basename "$arg"`"
+    local tmpname=`echo "${namearg//[ ()@$]/_}"` #format unix style 
+    local tmparg="`dirname "$arg"`/"$tmpname"" #WHAT IF IS A DIR?
+	if [[ "$tmpname" != "$namearg" ]]
+	then
+		mv  "$arg" "$tmparg"
+		echo "$tmparg"
+	elif [[ "$tmpname" == "$namearg" ]]
+		then
+			echo "$arg"
+	fi
 
-for (( i=lstind ; i <= $# ; i++ )) # scansiono gli argomenti, che vengono dopo la stringa
+
+    }
+
+ignored=0 
+declare -a argtosearch 
+
+for (( i=lstind ; i <= $# ; i++ )) 
 	do
 
     arg="${!i}" #indirect expansion
 
-	if [[ -f "${arg}" ]] # arg è un file esistente 
+	if [[ -f "${arg}" ]] 
 		then
-		     
-    		tmparg=$(echo "${arg//[ ()@$]/_}") 
-    		mv -- "$arg" "$tmparg"
-			argtosearch+=(${tmparg})
 
-	elif [[ ${rpresente} -eq 0 ]] && [[ -d "${arg}" ]] # non ho dato r ed arg è una directory
+		    tmparg="`format "$arg"`"
+			argtosearch+=("$tmparg") #add to search queue
+
+	elif [[ ${rgiven} -eq 0 ]] && [[ -d "${arg}" ]] 
 		then
-			echo "${arg} e' una directory, devi usare -r"
-			((ignorati += 1)) #serve per l'exit status
+			echo "${arg} is a directory, you must use -r"
+			((ignored += 1)) 
 
-	elif [[ ${rpresente} -eq 0 ]] && [[ ! -f "${arg}" ]] # non dato r ed arg non è un file
+	elif [[ ${rgiven} -eq 0 ]] && [[ ! -f "${arg}" ]] 
 		then
-		 echo "${arg} non esiste"
-			((ignorati += 1))
+		 echo "${arg} does not exist"
+			((ignored += 1))
 
-	elif [[ ${rpresente} -eq 1 ]] && [[ -d "${arg}" ]] # ho dato r e arg è una directory
+	elif [[ ${rgiven} -eq 1 ]] && [[ -d "${arg}" ]] 
     	then 
-    		checkdir "${arg}" #faccio partire la funzione di controllo 
-    		if [[ ${checked} -eq 1 ]] # la cartella ha i permessi giusti
-				then	
-					tmparg=$(echo "${arg//[ ()@$]/_}") 
-					if [[ $tmparg != $arg ]]
-					then
-					mv  "$arg" "$tmparg"
-					fi 
-					argtosearch+=(${tmparg})
+    		checkdir "${arg}" 
+    		if [[ $checked -eq 1 ]]
+    		then
+				tmparg="`format "$arg"`"
+				argtosearch+=("$tmparg") #add to search queue
 
-    		elif [[ ${checked} -eq 0 ]]
-    			then echo "I permessi della directory ${arg} non sono quelli richiesti"
-    			((ignorati += 1))
-    		fi
+			elif [[ $checked -eq 0 ]]
+				then ((ignored += 1))
+				
+			fi
 
-	elif [[ ${rpresente} -eq 1 ]] && [[ ! -f ${arg} ]] # ho dato r e arg non è un file
-		then echo "${arg} non esiste" 
-			((ignorati += 1))
+	elif [[ ${rgiven} -eq 1 ]] && [[ ! -f ${arg} ]] 
+		then echo "${arg} does not exist" 
+			((ignored += 1))
 	fi
 done
 
-# 3) fine
+# 3) end
 
-##### in : nome file out: rinomina il file
-rinomina(){
+##### in : filename
+rename(){
 	
-	f=$1
-	dir=`dirname $1`
+	local name="$1"
+	local dir=`dirname $1`
 
-	if [[ tpresente -eq 1 ]]
-	then echo ${f} "--->" "$(date -r ${f} +%Y%m%d_%H%M%S).${f##*.}" >> oldnames.txt
+	if [[ tgiven -eq 1 ]]
+	then echo "$name" "--->" "$dir"/"$(date -r "$name" +%Y%m%d_%H%M%S).${name##*.}" >> oldnames.txt
 	fi
-	estensione=`echo ${f##*.}`
+	local extension=`echo ${name##*.}`
 
-	if [[ $estensione == $1 ]]
+	if [[ $extension == $1 ]]
 	then 
-		mv ${f} "${dir}/$(date -r ${f} +%Y%m%d_%H%M%S)"
+		mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`"
 
-	elif [[ $estensione != $1 ]]
+	elif [[ $extension != $1 ]]
 		then 
-		mv ${f} "${dir}/$(date -r ${f} +%Y%m%d_%H%M%S).${f##*.}"
+		mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}"
 	fi
 
 }
 
-#### in: nomedir out: ricerca ricorsiva nelle directory#############
+#### in: directory #############
 ricdirsearch(){
 
 
-	for file in ${1}/* #considero anche i file nascosti
+	for file in ${1}/* #it considers also hidden files
 	do                                       
 
-		local nome="${file//[ ()@$]/_}"
-		if [[ "$file" != $nome ]]
-		then
-		mv -- "$file" "$nome"
-		fi
+		local name="`format "$file"`"
 
-		local nfl=`basename ${nome}`
+		local nfl=`basename ${name}`
 
 
 		if [[ "$nfl" == "*" ]]
 			then echo > /dev/null
 
-		elif [[ ! -d ${nome} ]] && [[ epresente -eq 1 ]] && [[ ${nfl} =~ ${eregex} ]]
+		elif [[ ! -d "$name" ]] && [[ "$egiven" -eq 1 ]] && [[ "$nfl" =~ "$eregex" ]]
 			then 
-				rinomina ${nome}
+				if [[ $fgiven -eq 0 ]]
+				then
+				rename "$name"
+				fi
 
-		elif [[ ! -d ${nome} ]] 
+		elif [[ ! -d ${name} ]] 
 			then 
-				rinomina ${nome}
+				if [[ $fgiven -eq 0 ]]
+				then
+				rename "$name"
+				fi
 		
-		elif [[ -d ${nome} ]] 
+		elif [[ -d ${name} ]] 
 			then 
-				checkdir "${arg}" #faccio partire la funzione di controllo 
-    			if [[ ${checked} -eq 1 ]] # la cartella ha i permessi giusti
-					then	
-						ricdirsearch ${nome}
-
-    			elif [[ ${checked} -eq 0 ]]
-    				then echo "I permessi della directory ${arg} non sono quelli richiesti"
-    					((ignorati += 1))
-    			fi
+				checkdir "$name" 
+				if [[ $checked -eq 1 ]]
+    			then
+					ricdirsearch "$name"
+				elif [[ $checked -eq 0 ]]
+				then ((ignored += 1))
 				
-			fi
+				fi
+
+
+    	fi
+				
 
 	done
 }
@@ -213,19 +275,30 @@ ricdirsearch(){
 
 
 
-for arg in "${argtosearch[@]}" #per ogni argomento valido
+for arg in "${argtosearch[@]}" 
 do 	
-
-	if [[ -f ${arg} ]] # se è un file rinominalo
-		then
-			rinomina ${arg}
 	
-	elif [[ -d ${arg} ]] # -r è presente, altrimenti lo script non l'avrebbe aggiunta agli argomenti 
+
+	if [[ -f "$arg" && "$arg" =~ "$eregex" ]]
+		then
+			if [[ "$fgiven" -eq 0 ]]
+			then
+			rename "$name"
+			fi
+
+	elif [[ -f "$arg" ]] 
+		then
+			if [[ "$fgiven" -eq 0 ]]
+			then
+			rename "$name"
+			fi
+
+	elif [[ -d "$arg" ]]  
 		then 
-		ricdirsearch ${arg} #passo il nome della directory
+		ricdirsearch "$arg" 
 	fi
 
 done
 
 
-exit ${ignorati}
+exit ${ignored}
