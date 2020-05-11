@@ -17,16 +17,17 @@ lstind=0 # the index of the first given argument
 
 # display script's synopsis #
 usage () {
-	echo -e "nametime [options] [file,dir] \n 
-		This script rename files with their creation timestamp \n
-		-e 'pattern' -> search only the files that have a match with 'pattern' \n 
-		-r -> search recursively into directories \n 
-		-t -> creates a file (oldnames.txt) with the old name \n
-		-f -> format all the file in standard unix but does not rename with the timestamp \n
-		-o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the \n
-		user the permission to change the permission, with the option 'x' it just change the permission \n
-		-h -> help menu \n " 
-	exit 1
+echo -e "nametime [options] [file,dir] \n 
+This script rename files with their creation timestamp \n
+-e 'pattern' -> search only the files that have a match with 'pattern' \n 
+-r -> search recursively into directories \n 
+-t -> creates a file (oldnames.txt) with the old name \n
+-f -> format all the file in standard unix but does not rename with the timestamp \n
+-o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the \n
+	user the permission to change the permission, with the option 'x' it just change the permission \n
+-h -> help menu \n " 
+
+exit 1
 }
 
 OPTERR=0 # getops is silenced
@@ -58,7 +59,7 @@ while getopts ":e:rthfo:" opt; do
 			then xmode=1
 				smode=0
 
-		elif [[ ${OPTARG} != "s" || ${OPTARG} != "x" ]]
+		elif [[ ${OPTARG} != "s" ]]
 			then 
 				echo "You can pass s or x to -o"
 				usage
@@ -112,20 +113,20 @@ fi
 if [[ tgiven -eq 1 ]] 
 	then 
 		touch oldnames.txt
-		echo oldname newname >>oldnames.txt
+		echo oldname "--->" newname >> oldnames.txt
 	fi
 
 #### checks directory permission #######
 #### in: dirname #######
 checkdir(){
 	checked=1
-	local dirname="${1}" 
+	local dirname="$1" 
 
 	if [[ ! -w "$dirname" ]] || [[ ! -x "$dirname" ]] 
 		then
 			if [[ $smode -eq 1 ]] #safe mode
 			then 
-			echo "The directory ${1} has not the right permession, you want to change that or exit? "
+			echo "The file ${1} has not the right permession, you want to change that or exit? "
 			read in
 			if [[ "$in" == "yes" || "$in" == "y" ]]
 				then chmod u+wx "$dirname" 
@@ -203,14 +204,15 @@ done
 
 # 3) end
 
-##### in : filename
+##### in : filename 
 rename(){
 	
 	local name="$1"
-	local dir=`dirname $1`
+	local dir=`dirname "$name"`
+
 
 	if [[ tgiven -eq 1 ]]
-	then echo "$name" "--->" "$dir"/"$(date -r "$name" +%Y%m%d_%H%M%S).${name##*.}" >> oldnames.txt
+	then echo "$name" "--->" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`" >> oldnames.txt
 	fi
 	local extension=`echo ${name##*.}`
 
@@ -229,9 +231,8 @@ rename(){
 ricdirsearch(){
 
 
-	for file in ${1}/* #it considers also hidden files
+	for file in "$1"/* #it considers also hidden files
 	do                                       
-
 		local name="`format "$file"`"
 
 		local nfl=`basename ${name}`
@@ -278,19 +279,18 @@ ricdirsearch(){
 for arg in "${argtosearch[@]}" 
 do 	
 	
-
-	if [[ -f "$arg" && "$arg" =~ "$eregex" ]]
+	if [[ -f "$arg" && $egiven -eq 1 && "$arg" =~ "$eregex" ]]
 		then
 			if [[ "$fgiven" -eq 0 ]]
 			then
-			rename "$name"
+			rename "$arg"
 			fi
 
 	elif [[ -f "$arg" ]] 
 		then
 			if [[ "$fgiven" -eq 0 ]]
 			then
-			rename "$name"
+			rename "$arg"
 			fi
 
 	elif [[ -d "$arg" ]]  
