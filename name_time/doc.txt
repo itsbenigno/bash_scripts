@@ -1,1 +1,11 @@
+nametime [options] [file,dir]
 
+This script rename files with their creation timestamp 
+
+-e 'pattern' -> search only the files that have a match with 'pattern' 
+-r -> search recursively into directories 
+-t -> creates a file (oldnames.txt) with the old name
+-f -> format all the file in standard unix but does not rename with the timestamp 
+-o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the 
+	user the permission to change the permission, with the option 'x' it just change the permission 
+-h -> help menu 
