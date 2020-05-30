@@ -20,8 +20,13 @@ number=0 # to distinguish duplicates file
 # display script's synopsis #
 usage () {
 echo -e "nametime [options] [file,dir] \n 
-This script rename files with their creation timestamp \n
--e 'pattern' -> search only the files that have a match with 'pattern' \n 
+This script rename files using their creation timestamp \n
+
+It's highly reccomended to use the quotes for paths, and the path MUST NOT 
+end with a /
+Soft links are not considered
+
+-e 'pattern' -> search only the files that matches with 'pattern' \n 
 -r -> search recursively into directories \n 
 -t -> creates a file (oldnames.txt) with the old name \n
 -f -> format all the file in standard unix but does not rename with the timestamp \n
@@ -169,7 +174,11 @@ for (( i=lstind ; i <= $# ; i++ ))
 
     arg="${!i}" #indirect expansion
 
-	if [[ -f "${arg}" ]] 
+	if [[ -L "$arg" ]]
+	then 
+		echo > /dev/null
+
+	elif [[ -f "$arg" ]] 
 		then
 
 		    tmparg="`format "$arg"`"
@@ -210,15 +219,16 @@ done
 rename(){
 	
 	local name="$1"
+	local bsname=`basename "$name"`
 	local dir=`dirname "$name"`
 
 
 	if [[ tgiven -eq 1 ]]
 	then echo "$name" "--->" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`" >> oldnames.txt
 	fi
-	local extension=`echo ${name##*.}`
+	local extension=`echo ${bsname##*.}`
 
-	if [[ $extension == $1 ]] #file has no extension
+	if [[ $extension == "$bsname" ]] #file has no extension
 	then 
 		if [[ -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`" ]] #file already exist
 		then
@@ -229,7 +239,7 @@ rename(){
 			mv "$name" "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`"
 		fi
 
-	elif [[ $extension != $1 ]]
+	elif [[ $extension != "$bsname" ]]
 		then 
 		if [[ -f "$dir"/"`date -r "$name" +%Y%m%d_%H%M%S`.${name##*.}" ]]
 		then
@@ -251,12 +261,15 @@ ricdirsearch(){
 
 	for file in "$1"/* #it considers also hidden files
 	do                                       
-		local name="`format "$file"`"
+		local name=`format "$file"`
 
 		local nfl=`basename ${name}`
 
 
-		if [[ "$nfl" == "*" ]]
+		if [[ -L "$name" ]]
+			then echo > /dev/null
+
+		elif [[ "$nfl" == "*" ]]
 			then echo > /dev/null
 
 		elif [[ ! -d "$name" ]] && [[ "$egiven" -eq 1 ]] && [[ "$nfl" =~ "$eregex" ]]
