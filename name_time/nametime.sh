@@ -21,12 +21,13 @@ number=0 # to distinguish duplicates file
 usage () {
 echo -e "nametime [options] [file,dir] \n 
 This script rename files using their creation timestamp \n
+Side effect: every file is renamed in unix standard
 
 It's highly reccomended to use the quotes for paths, and the path MUST NOT 
 end with a /
 Soft links are not considered
 
--e 'pattern' -> search only the files that matches with 'pattern' (in the directories)\n 
+-e 'pattern' -> search only the files that matches (eregex) with 'pattern' (in the directories)\n 
 -r -> search recursively into directories \n 
 -t -> creates a file (oldnames.txt) in the cwd with the old name \n
 -f -> format all the file in standard unix but does not rename with the timestamp \n
@@ -78,7 +79,7 @@ while getopts ":e:rthfo:" opt; do
 		;;
 
 	:) 
-      	echo "You must give and argument to ${opt}"
+      	echo "You must give an argument to ${opt}"
      	usage
       ;;
 
@@ -116,7 +117,7 @@ if [[ ${lstind} -eq 0 ]] #if no option was given
 then lstind=1			 
 fi
 
-#save tbe old name in a file before renaming
+#save the old name in a file before renaming
 if [[ tgiven -eq 1 ]] 
 	then 
 		touch oldnames.txt
@@ -274,7 +275,7 @@ ricdirsearch(){
 
 		elif [[ "$egiven" -eq 1 ]] && [[ ! -d "$name" ]]
 			then 
-				if [[ "$nfl" =~ "$eregex" ]] 
+				if [[ "$nfl" =~ $eregex ]] 
 				then 
 					if [[ $fgiven -eq 0 ]]
 					then
