@@ -26,9 +26,9 @@ It's highly reccomended to use the quotes for paths, and the path MUST NOT
 end with a /
 Soft links are not considered
 
--e 'pattern' -> search only the files that matches with 'pattern' \n 
+-e 'pattern' -> search only the files that matches with 'pattern' (in the directories)\n 
 -r -> search recursively into directories \n 
--t -> creates a file (oldnames.txt) with the old name \n
+-t -> creates a file (oldnames.txt) in the cwd with the old name \n
 -f -> format all the file in standard unix but does not rename with the timestamp \n
 -o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the \n
 	user the permission to change the permission, with the option 'x' it just change the permission \n
@@ -133,11 +133,11 @@ checkdir(){
 		then
 			if [[ $smode -eq 1 ]] #safe mode
 			then 
-			echo "The file ${1} has not the right permession, you want to change that or exit? "
+			echo "The directory ${1} has not the right permession, you want to change that (y) or ignore (n)? "
 			read in
 			if [[ "$in" == "yes" || "$in" == "y" ]]
 				then chmod u+wx "$dirname" 
-			elif [[ "$in" == "no" || "$in" == * ]] #in the final version it just ignore the file
+			elif [[ "$in" == "no" || "$in" == * ]] 
 				then checked=0
 			fi
 			elif [[ $xmode -eq 1 ]]
@@ -263,7 +263,7 @@ ricdirsearch(){
 	do                                       
 		local name=`format "$file"`
 
-		local nfl=`basename ${name}`
+		local nfl=`basename "$name"`
 
 
 		if [[ -L "$name" ]]
@@ -272,11 +272,14 @@ ricdirsearch(){
 		elif [[ "$nfl" == "*" ]]
 			then echo > /dev/null
 
-		elif [[ ! -d "$name" ]] && [[ "$egiven" -eq 1 ]] && [[ "$nfl" =~ "$eregex" ]]
+		elif [[ "$egiven" -eq 1 ]] && [[ ! -d "$name" ]]
 			then 
-				if [[ $fgiven -eq 0 ]]
-				then
-				rename "$name"
+				if [[ "$nfl" =~ "$eregex" ]] 
+				then 
+					if [[ $fgiven -eq 0 ]]
+					then
+					rename "$name"
+					fi
 				fi
 
 		elif [[ ! -d ${name} ]] 
@@ -310,14 +313,7 @@ ricdirsearch(){
 for arg in "${argtosearch[@]}" 
 do 	
 	
-	if [[ -f "$arg" && $egiven -eq 1 && "$arg" =~ "$eregex" ]]
-		then
-			if [[ "$fgiven" -eq 0 ]]
-			then
-			rename "$arg"
-			fi
-
-	elif [[ -f "$arg" ]] 
+	if [[ -f "$arg" ]] 
 		then
 			if [[ "$fgiven" -eq 0 ]]
 			then
