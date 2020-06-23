@@ -19,22 +19,53 @@ number=0 # to distinguish duplicates file
 
 # display script's synopsis #
 usage () {
-echo -e "nametime [options] [file,dir] \n 
-This script rename files using their creation timestamp \n
-Side effect: every file is renamed in unix standard
+echo -e "
+NAME 
+	nametime -- rename files using their creation timestamp
 
-It's highly reccomended to use the quotes for paths, and the path MUST NOT 
-end with a /
-Soft links are not considered
+SYNOSPSIS 
+	nametime [-rtf][-e pattern][-o [x,s]]
+	nametime -h
 
--e 'pattern' -> search only the files that matches (eregex) with 'pattern' (in the directories)\n 
--r -> search recursively into directories \n 
--t -> creates a file (oldnames.txt) in the cwd with the old name \n
--f -> format all the file in standard unix but does not rename with the timestamp \n
--o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the \n
-	user the permission to change the permission, with the option 'x' it just change the permission \n
--h -> help menu \n " 
+DESCRIPTION
+	The nametime script allows to rename files, using their creation time, if the filesystem
+	does not support creation time, nametime will use their modification time, so be careful.
+	It's highly reccomended to use the quotes for paths. Soft links are not considered.
 
+	The command line options are as follows:
+
+	-e 'pattern' -> rename only the files in directories that matches (eregex) with 'pattern'
+
+	-r -> search recursively into directories (it must be given if a directories is passed as an argument)
+	
+	-t -> creates a file (oldnames.txt) in the cwd that store the old name values in this way:
+			oldname ---> newname
+			file         20201020
+	
+	-f -> format all the files' name in standard unix but does not rename them with their timestamp
+
+	-o '[x,s]' -> the default mode is **-o 's'**, so if a directory has not the right permission it ask the
+	user the permission to change the permission. With the option 'x' it just changes the permission
+	
+	-h -> help menu  
+
+SIDE EFFECTS
+		-every file is renamed in unix standard
+
+FILES
+	${cwd}/oldnames.txt		Where the oldnames are saved
+
+EXIT STATUS
+	
+	0 if there's no error and no ignored files
+	1 if the script is not invoked correctly
+	x where x is the number of ignored files
+
+AUTHORS
+	Benigno Ansanelli
+
+23/06/2020
+	"
 exit 1
 }
 
