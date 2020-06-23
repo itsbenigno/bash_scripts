@@ -1,11 +1,45 @@
-nametime [options] [file,dir]
+NAME 
+	nametime -- rename files using their creation timestamp
 
-This script rename files with their creation timestamp 
+SYNOSPSIS 
+	nametime [-rtf][-e pattern][-o [x,s]]
+	nametime -h
 
--e 'pattern' -> search only the files that have a match with 'pattern' 
--r -> search recursively into directories 
--t -> creates a file (oldnames.txt) with the old name
--f -> format all the file in standard unix but does not rename with the timestamp 
--o '[x,s]' -> the default mode is -o 's', if a directory has not the right permission it ask the 
-	user the permission to change the permission, with the option 'x' it just change the permission 
--h -> help menu 
+DESCRIPTION
+	The nametime script allows to rename files, using their creation time, if the filesystem
+	does not support creation time, nametime will use their modification time, so be careful.
+	It's highly reccomended to use the quotes for paths. Soft links are not considered.
+
+	The command line options are as follows:
+
+	-e 'pattern' -> rename only the files in directories that matches (eregex) with 'pattern'
+
+	-r -> search recursively into directories (it must be given if a directories is passed as an argument)
+	
+	-t -> creates a file (oldnames.txt) in the cwd that store the old name values in this way:
+			oldname ---> newname
+			file         20201020
+	
+	-f -> format all the files' name in standard unix but does not rename them with their timestamp
+
+	-o '[x,s]' -> the default mode is **-o 's'**, so if a directory has not the right permission it ask the
+	user the permission to change the permission. With the option 'x' it just changes the permission
+	
+	-h -> help menu  
+
+SIDE EFFECTS
+		-every file is renamed in unix standard
+
+FILES
+	${cwd}/oldnames.txt		Where the oldnames are saved
+
+EXIT STATUS
+	
+	0 if there's no error and no ignored files
+	1 if the script is not invoked correctly
+	x where x is the number of ignored files
+
+AUTHORS
+	Benigno Ansanelli
+
+23/06/2020
