@@ -1,1 +1,1 @@
-# utilities_sh
+Bash utilities
