@@ -11,3 +11,5 @@ You can rename all the photos (or files) in a folder, and can also select only s
 if you know regex expression. 
 
 You can find all the features and its usage in the doc.txt file. 
+
+To install, execute the 'install.sh' bash script from the project directory.
